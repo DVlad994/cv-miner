@@ -39,3 +39,41 @@
   color: #999;
   font-size: 14px;
 }
+
+.vacancy-preview {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.vacancy-preview h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.vacancy-req {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.analyze-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 28px;
+  background: #673AB7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 16px;
+}
+
+.analyze-btn:hover {
+  background: #5c32a8;
+}
