@@ -1,0 +1,7 @@
+
+pypdf2
+python-docx
+pdfplumber
+pytesseract
+pillow
+pdf2image

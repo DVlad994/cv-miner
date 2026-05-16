@@ -37,7 +37,7 @@ function App() {
       console.log('Результат:', data);
     } catch (error) {
       console.error('Ошибка:', error);
-      alert('Ошибка соединения с сервером. Бэкенд запущен?');
+      alert('Ошибка соединения с сервером.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -97,7 +97,7 @@ function App() {
                     <span>Файл: {result.filename}</span>
                     <span>Символов: {result.text_length}</span>
                   </div>
-                  <pre className="result-text">{result.text_preview}</pre>
+                  <pre className="result-text">{result.full_text}</pre>
                 </div>
               )}
             </>

@@ -14,7 +14,6 @@ def allowed_file(filename):
 
 @api_bp.route('/analyze', methods=['POST'])
 def analyze_resume():
-    # Проверка файла
     if 'file' not in request.files:
         return jsonify({"error": "Файл обязателен"}), 400
 
@@ -28,28 +27,20 @@ def analyze_resume():
     filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    print(f"[debug] Загружен файл: {file.filename}")
-    print(f"[debug] Сохранён как: {filename}")
-    print(f"[debug] Размер: {os.path.getsize(filepath)} байт")
+    print(f"Загружен: {file.filename}")
 
     parse_result = extract_text(filepath)
 
     if not parse_result['success']:
-        print(f"[debug]: {parse_result['error']}")
+        print(f"ОШИБКА: {parse_result['error']}")
         return jsonify({"error": parse_result['error']}), 400
 
     resume_text = parse_result['text']
 
-    # Вывод текста в консоль
-    print("[debug] ", resume_text)
-    print(f"Всего символов: {len(resume_text)}")
-
-    # Возвращаем текст и метаданные
     return jsonify({
         "analysis_id": str(uuid.uuid4()),
         "filename": file.filename,
         "text_length": len(resume_text),
-        "text_preview": resume_text[:500],
         "full_text": resume_text
     })
 
