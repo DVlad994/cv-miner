@@ -87,6 +87,28 @@
   color: #999;
 }
 
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-replace {
+  background: none;
+  border: 1px solid #673AB7;
+  color: #673AB7;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.file-replace:hover {
+  background: #f3e8ff;
+}
+
 .file-remove {
   background: none;
   border: none;

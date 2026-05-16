@@ -33,7 +33,11 @@ function DropZone({ onFileUpload, uploadedFile, onRemoveFile, disabled }) {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) onFileUpload(file);
+    if (file) {
+      onFileUpload(file);
+    }
+    // Сбрасываем value, чтобы можно было выбрать тот же файл повторно
+    e.target.value = '';
   };
 
   const formatSize = (bytes) => {
@@ -44,6 +48,14 @@ function DropZone({ onFileUpload, uploadedFile, onRemoveFile, disabled }) {
 
   return (
     <div className="dropzone-wrapper">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx,.doc,.png,.jpg"
+        onChange={handleFileChange}
+        className="file-input"
+      />
+
       {!uploadedFile ? (
         <div
           className={`dropzone ${isDragOver ? 'drag-over' : ''} ${disabled ? 'disabled' : ''}`}
@@ -53,13 +65,6 @@ function DropZone({ onFileUpload, uploadedFile, onRemoveFile, disabled }) {
           onDrop={handleDrop}
           onClick={handleClick}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.docx,.doc,.png,.jpg"
-            onChange={handleFileChange}
-            className="file-input"
-          />
           <div className="dropzone-icon">+</div>
           <div className="dropzone-text">
             <span className="dropzone-primary">Перетащите резюме сюда</span>
@@ -73,7 +78,26 @@ function DropZone({ onFileUpload, uploadedFile, onRemoveFile, disabled }) {
             <span className="file-name">{uploadedFile.name}</span>
             <span className="file-size">{formatSize(uploadedFile.size)}</span>
           </div>
-          <button className="file-remove" onClick={onRemoveFile}>×</button>
+          <div className="file-actions">
+            <button
+              className="file-replace"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+            >
+              Загрузить другое резюме
+            </button>
+            <button
+              className="file-remove"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveFile();
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
     </div>
