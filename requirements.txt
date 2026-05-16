@@ -5,3 +5,5 @@ pdfplumber
 pytesseract
 pillow
 pdf2image
+transformers
+torch

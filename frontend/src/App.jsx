@@ -45,7 +45,6 @@ function App() {
 
   return (
     <div className="app">
-      {/* Шапка */}
       <header className="header">
         <div className="header-left">
           <div className="logo-icon">CV</div>
@@ -57,7 +56,6 @@ function App() {
         </div>
       </header>
 
-      {/* Основная область */}
       <div className="main-layout">
         <Sidebar selectedVacancy={selectedVacancy} onSelect={setSelectedVacancy} />
 
@@ -91,14 +89,55 @@ function App() {
               )}
 
               {result && (
-                <div className="result-card">
-                  <h3>Текст извлечён</h3>
-                  <div className="result-info">
-                    <span>Файл: {result.filename}</span>
-                    <span>Символов: {result.text_length}</span>
+                <>
+                  {/* Общий рейтинг на основе навыков и опыта */}
+                  <div className="score-card">
+                    <div className="score-circle">
+                      <span className="score-number">{result.matching_result.total_score}%</span>
+                      <span className="score-label">совпадение</span>
+                    </div>
                   </div>
-                  <pre className="result-text">{result.full_text}</pre>
-                </div>
+
+                  {/* Информация о соискателе */}
+                  <div className="result-card">
+                    <h3>Кандидат</h3>
+                    {result.candidate.name && <p><strong>Имя:</strong> {result.candidate.name}</p>}
+                    {result.candidate.email && <p><strong>Email:</strong> {result.candidate.email}</p>}
+                    {result.candidate.phone && <p><strong>Телефон:</strong> {result.candidate.phone}</p>}
+                    {result.candidate.last_position && <p><strong>Последняя должность:</strong> {result.candidate.last_position}</p>}
+                    {result.candidate.experience_years && <p><strong>Опыт:</strong> {result.candidate.experience_years} лет</p>}
+                    <div className="skills-tags">
+                      {result.candidate.skills.map(skill => (
+                        <span key={skill} className="skill-tag">{skill}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Gap-анализ */}
+                  <div className="result-card">
+                    <h3>Gap-анализ</h3>
+                    <div className="gap-columns">
+                      <div>
+                        <h4>Совпало ({result.matching_result.matched.length})</h4>
+                        {result.matching_result.matched.map(s => (
+                          <div key={s} className="gap-item matched">{s}</div>
+                        ))}
+                      </div>
+                      <div>
+                        <h4>Отсутствует ({result.matching_result.missing.length})</h4>
+                        {result.matching_result.missing.map(s => (
+                          <div key={s} className="gap-item missing">{s}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Полный текст резюме */}
+                  <div className="result-card">
+                    <h3>Извлечённый текст ({result.text_length} символов)</h3>
+                    <pre className="result-text">{result.full_text}</pre>
+                  </div>
+                </>
               )}
             </>
           ) : (

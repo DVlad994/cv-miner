@@ -194,3 +194,77 @@
   font-size: 13px;
   color: #999;
 }
+
+.score-card {
+  background: linear-gradient(135deg, #673AB7, #9c27b0);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.score-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.score-number {
+  font-size: 48px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.score-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  margin-top: 4px;
+}
+
+.skills-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.skill-tag {
+  background: #f3e8ff;
+  color: #673AB7;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gap-columns {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.gap-columns > div {
+  flex: 1;
+}
+
+.gap-columns h4 {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.gap-item {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.gap-item.matched {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.gap-item.missing {
+  background: #ffebee;
+  color: #c62828;
+}

@@ -2,6 +2,7 @@ import os
 import uuid
 from flask import Blueprint, request, jsonify, current_app
 from services.parser import extract_text
+from services.analyzer import analyze_resume_text
 
 api_bp = Blueprint('api', __name__)
 
@@ -23,25 +24,31 @@ def analyze_resume():
     if not allowed_file(file.filename):
         return jsonify({"error": f"Неподдерживаемый формат. Допустимые: {', '.join(ALLOWED_EXTENSIONS)}"}), 400
 
+    vacancy_text = request.form.get('vacancy_text', '').strip()
+    if not vacancy_text:
+        return jsonify({"error": "Текст вакансии обязателен"}), 400
+
     filename = f"{uuid.uuid4()}_{file.filename}"
     filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    print(f"Загружен: {file.filename}")
-
+    # Парсинг
     parse_result = extract_text(filepath)
-
     if not parse_result['success']:
-        print(f"ОШИБКА: {parse_result['error']}")
         return jsonify({"error": parse_result['error']}), 400
 
     resume_text = parse_result['text']
+
+    # NLP-анализ
+    analysis = analyze_resume_text(resume_text, vacancy_text)
 
     return jsonify({
         "analysis_id": str(uuid.uuid4()),
         "filename": file.filename,
         "text_length": len(resume_text),
-        "full_text": resume_text
+        "full_text": resume_text,
+        "candidate": analysis["candidate"],
+        "matching_result": analysis["matching_result"]
     })
 
 
