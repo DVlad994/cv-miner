@@ -51,10 +51,10 @@ def convert_to_images(input_file: str) -> str:
 
 def image_to_text(image_path: str) -> str:
     """Извлекает текст из изображения через tesseract"""
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
     img = Image.open(image_path)
     text = pytesseract.image_to_string(img, lang='rus+eng')
     return text.strip()
-
 
 
 def extract_table(pdf_path: str, page_num: int, table_num: int) -> list:
