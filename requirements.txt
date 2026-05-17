@@ -7,3 +7,5 @@ pillow
 pdf2image
 transformers
 torch
+scikit-learn
+numpy
