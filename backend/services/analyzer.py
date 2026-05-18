@@ -1,4 +1,6 @@
 import re
+from datetime import datetime
+
 import torch
 from transformers import AutoTokenizer, AutoModel, AutoModelForTokenClassification
 
@@ -84,10 +86,7 @@ def extract_entities(text: str) -> dict:
             token = token[2:]
         if label.startswith("B-"):
             if current_tokens:
-                entities.append((
-                    current_label,
-                    merge_wordpiece_tokens(current_tokens)
-                ))
+                entities.append((current_label,merge_wordpiece_tokens(current_tokens)))
             current_label = label[2:]
             current_tokens = [token]
 
@@ -118,6 +117,14 @@ def extract_entities(text: str) -> dict:
         entity_text = entity_text.replace(" ;", ";")
         entity_text = entity_text.replace(" - ", "-")
         entity_text = entity_text.replace(" — ", " — ")
+        entity_text = entity_text.replace(" AP I", "API")
+        entity_text = entity_text.replace("Post gre SQL", "PostgreSQL")
+        entity_text = entity_text.replace("Fast API", "FastAPI")
+        entity_text = entity_text.replace("Dock er", "Docker")
+        entity_text = entity_text.replace("Ku ber net es", "Kubernetes")
+        entity_text = entity_text.replace("Develop er", "Developer")
+        entity_text = entity_text.replace("V K", "VK")
+        entity_text = entity_text.replace("информат ика", "информатика")
 
         if not entity_text:
             continue
@@ -181,6 +188,9 @@ def extract_entities(text: str) -> dict:
             except:
                 pass
 
+    current_year = datetime.now().year
+    if "настоящее время" in " ".join(result["dates"]).lower():
+        years.append(current_year)
     if len(years) >= 2:
         result["experience_years"] = max(years) - min(years)
 
@@ -213,21 +223,16 @@ def extract_entities(text: str) -> dict:
     return result
 
 
-def merge_wordpiece_tokens(tokens: list) -> str:
-    result = ""
+def merge_wordpiece_tokens(tokens):
+    merged = ""
     for token in tokens:
         if token.startswith("##"):
-            result += token[2:]
-        elif len(result) == 0:
-            result += token
-        elif re.match(r"^[.,:;!?)]$", token):
-            result += token
-        elif token in ["—", "-", "/"]:
-            result += f" {token} "
+            merged += token[2:]
         else:
-            result += " " + token
-    result = re.sub(r"\s+", " ", result)
-    return result.strip()
+            if merged:
+                merged += " "
+            merged += token
+    return merged.strip()
 
 def get_embedding(text: str) -> torch.Tensor:
     """

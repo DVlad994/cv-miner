@@ -3,3 +3,6 @@ __pycache__/
 .env
 uploads/
 /backend/scripts/resume_dataset.json
+/backend/scripts/rubert_resume_ner/
+/backend/scripts/train.csv
+/backend/scripts/rubert-ner-resume/
