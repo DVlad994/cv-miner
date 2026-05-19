@@ -38,7 +38,6 @@ def analyze_resume():
         return jsonify({"error": parse_result['error']}), 400
 
     resume_text = parse_result['text']
-
     # NLP-анализ
     analysis = analyze_resume_text(resume_text, vacancy_text)
 
@@ -48,7 +47,11 @@ def analyze_resume():
         "text_length": len(resume_text),
         "full_text": resume_text,
         "candidate": analysis["candidate"],
-        "matching_result": analysis["matching_result"]
+        "matching_result": {
+            "total_score": analysis["matching_result"]["total_score"],
+            "matched": analysis["matching_result"]["matched"],
+            "missing": analysis["matching_result"]["missing"]
+        }
     })
 
 

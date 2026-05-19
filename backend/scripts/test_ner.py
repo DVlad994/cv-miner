@@ -1,31 +1,10 @@
-import torch
-from transformers import (
-    AutoTokenizer,
-    AutoModelForTokenClassification
-)
-from transformers import pipeline
+from backend.services.analyzer import extract_entities, ner_model, NER_MODEL_PATH
 
-MODEL_PATH = "./rubert-ner-resume"
+print(f"Модель загружена: {ner_model is not None}")
+print(f"Путь к модели: {NER_MODEL_PATH}")
 
-print("Загрузка модели...")
-
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-
-model = AutoModelForTokenClassification.from_pretrained(MODEL_PATH)
-
-device = 0 if torch.cuda.is_available() else -1
-
-ner = pipeline(
-    "token-classification",
-    model=model,
-    tokenizer=tokenizer,
-    aggregation_strategy="simple",
-    device=device
-)
-
-# нестандартное резюме, нет прямого названия должности, редкие навыки
-text = """
-Артём Власов
+# стандартное резюме, которое может быть обработано с помощью правил (regex)
+text = """Артём Власов
 
 tg: @artem_dev
 для связи: artem.vlsv@protonmail.com
@@ -72,7 +51,6 @@ Ozon Tech
 Английский — Upper-Intermediate
 """
 
+result = extract_entities(text)
 
-entities = ner(text)
-for entity in entities:
-    print(f"{entity['word']} "f"-> {entity['entity_group']} "f"({round(entity['score'], 3)})")
+print(result)

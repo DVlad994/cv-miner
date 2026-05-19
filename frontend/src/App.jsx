@@ -37,7 +37,7 @@ function App() {
       console.log('Результат:', data);
     } catch (error) {
       console.error('Ошибка:', error);
-      alert('Ошибка соединения с сервером.');
+      alert('Ошибка соединения с сервером. Бэкенд запущен?');
     } finally {
       setIsAnalyzing(false);
     }
@@ -71,26 +71,28 @@ function App() {
               <DropZone
                 onFileUpload={setUploadedFile}
                 uploadedFile={uploadedFile}
-                onRemoveFile={() => {
-                  setUploadedFile(null);
-                  setResult(null);
-                }}
+                onRemoveFile={() => { setUploadedFile(null); setResult(null); }}
                 disabled={!selectedVacancy}
               />
 
-              {uploadedFile && (
-                <button
-                  className="analyze-btn"
-                  onClick={handleAnalyze}
-                  disabled={isAnalyzing}
-                >
-                  {isAnalyzing ? 'Анализируем...' : 'Найти совпадения'}
+              {uploadedFile && !isAnalyzing && (
+                <button className="analyze-btn" onClick={handleAnalyze}>
+                  Найти совпадения
                 </button>
               )}
 
+              {isAnalyzing && (
+                <div className="progress-container">
+                  <div className="progress-bar">
+                    <div className="progress-fill"></div>
+                  </div>
+                  <p className="progress-text">Анализируем резюме...</p>
+                </div>
+              )}
+
               {result && (
-                <>
-                  {/* Общий рейтинг на основе навыков и опыта */}
+                <div className="results">
+                  {/* Итоговый скор */}
                   <div className="score-card">
                     <div className="score-circle">
                       <span className="score-number">{result.matching_result.total_score}%</span>
@@ -98,14 +100,27 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Информация о соискателе */}
+                  {/* Информация о кандидате */}
                   <div className="result-card">
                     <h3>Кандидат</h3>
                     {result.candidate.name && <p><strong>Имя:</strong> {result.candidate.name}</p>}
                     {result.candidate.email && <p><strong>Email:</strong> {result.candidate.email}</p>}
                     {result.candidate.phone && <p><strong>Телефон:</strong> {result.candidate.phone}</p>}
-                    {result.candidate.last_position && <p><strong>Последняя должность:</strong> {result.candidate.last_position}</p>}
-                    {result.candidate.experience_years && <p><strong>Опыт:</strong> {result.candidate.experience_years} лет</p>}
+                    {result.candidate.last_position && <p><strong>Должность:</strong> {result.candidate.last_position}</p>}
+                    {result.candidate.experience_years > 0 && (
+                      <p><strong>Опыт:</strong> {result.candidate.experience_years} лет</p>
+                    )}
+                    {result.candidate.organizations.length > 0 && (
+                      <p><strong>Компании:</strong> {result.candidate.organizations.join(', ')}</p>
+                    )}
+                    {result.candidate.education.length > 0 && (
+                      <p><strong>Образование:</strong> {result.candidate.education.join(', ')}</p>
+                    )}
+                  </div>
+
+                  {/* Навыки */}
+                  <div className="result-card">
+                    <h3>Навыки ({result.candidate.skills.length})</h3>
                     <div className="skills-tags">
                       {result.candidate.skills.map(skill => (
                         <span key={skill} className="skill-tag">{skill}</span>
@@ -115,16 +130,20 @@ function App() {
 
                   {/* Gap-анализ */}
                   <div className="result-card">
-                    <h3>Gap-анализ</h3>
+                    <h3>Анализ требований</h3>
                     <div className="gap-columns">
                       <div>
-                        <h4>Совпало ({result.matching_result.matched.length})</h4>
+                        <h4 className="gap-matched-title">
+                          Совпало ({result.matching_result.matched.length})
+                        </h4>
                         {result.matching_result.matched.map(s => (
                           <div key={s} className="gap-item matched">{s}</div>
                         ))}
                       </div>
                       <div>
-                        <h4>Отсутствует ({result.matching_result.missing.length})</h4>
+                        <h4 className="gap-missing-title">
+                          Отсутствует ({result.matching_result.missing.length})
+                        </h4>
                         {result.matching_result.missing.map(s => (
                           <div key={s} className="gap-item missing">{s}</div>
                         ))}
@@ -132,12 +151,12 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Полный текст резюме */}
+                  {/* Текст резюме */}
                   <div className="result-card">
                     <h3>Извлечённый текст ({result.text_length} символов)</h3>
                     <pre className="result-text">{result.full_text}</pre>
                   </div>
-                </>
+                </div>
               )}
             </>
           ) : (

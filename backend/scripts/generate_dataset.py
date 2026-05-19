@@ -3,6 +3,27 @@ import re
 import pandas as pd
 
 
+IT_POS_KEYWORDS = [
+    "разработчик", "developer", "программист", "software engineer",
+    "devops", "data scientist", "data engineer", "data analyst",
+    "qa engineer", "qa automation", "тестировщик", "frontend",
+    "backend", "fullstack", "machine learning", "ml engineer",
+    "ios developer", "android developer", "системный аналитик",
+    "team lead", "tech lead", "архитектор по", "architect",
+    "веб-разработчик", "мобильный разработчик", "биг дата",
+    "big data", "etl разработчик", "bi аналитик",
+    "специалист по кибербезопасности", "пентестер",
+]
+
+IT_STOP_POSITIONS = [
+    "инженер-электрик", "инженер-строитель", "инженер по эксплуатации",
+    "инженер по охране труда", "инженер пто", "инженер-энергетик",
+    "инженер-механик", "главный инженер", "инженер по ремонту",
+    "инженер-технолог", "программист-электрик", "программист-строитель",
+    "инженер программист электрик", "электрик", "строитель",
+]
+
+
 class ResumeDatasetGenerator:
 
     def __init__(self, csv_path="train.csv", output_path="resume_dataset.json"):
@@ -15,12 +36,10 @@ class ResumeDatasetGenerator:
         self.ACH_LABEL = "ACHIEVEMENT"
 
     def tokenize(self, text):
-        text = str(text)
-        text = text.replace("\n", " ").replace("\t", " ").replace("\\", " ")
+        text = str(text).replace("\n", " ").replace("\t", " ").replace("\\", " ")
         return re.findall(r"\w+|[^\w\s]", text, re.UNICODE)
 
     def is_punctuation_token(self, token):
-        """Токен из одного знака пунктуации: запятая, дефис, двоеточие, точка, слеш"""
         return len(token) == 1 and token in ",-.:;!/\\"
 
     def add_entity(self, labels, tokens, entity_tokens, label_name):
@@ -29,13 +48,23 @@ class ResumeDatasetGenerator:
         entity_lower = [x.lower() for x in entity_tokens]
         for i in range(len(tokens)):
             chunk = tokens[i:i + len(entity_tokens)]
-            chunk_lower = [x.lower() for x in chunk]
-            if chunk_lower == entity_lower:
+            if [x.lower() for x in chunk] == entity_lower:
                 labels[i] = f"B-{label_name}"
                 for j in range(1, len(entity_tokens)):
                     if i + j < len(labels):
                         labels[i + j] = f"I-{label_name}"
         return labels
+
+    @staticmethod
+    def is_it_position(position):
+        if pd.isna(position):
+            return False
+        pos = str(position).lower()
+        for stop in IT_STOP_POSITIONS:
+            if stop in pos:
+                return False
+        return any(kw in pos for kw in IT_POS_KEYWORDS)
+
 
     def safe_json_extract(self, raw_text, field_name):
         if pd.isna(raw_text):
@@ -43,24 +72,19 @@ class ResumeDatasetGenerator:
         text = str(raw_text).replace('""', '"')
         pattern = rf'"{field_name}"\s*:\s*"([^"]+)"'
         matches = re.findall(pattern, text, flags=re.IGNORECASE)
-        clean = []
-        for item in matches:
-            item = item.strip()
-            if len(item) > 1:
-                clean.append(item)
-        return clean
+        return [m.strip() for m in matches if len(m.strip()) > 1]
+
 
     def parse_skills(self, raw_skills):
         if pd.isna(raw_skills):
             return []
         text = str(raw_skills).replace('""', '"')
         matches = re.findall(r'"([^"]+)"', text)
-        result = []
-        for m in matches:
-            m = m.strip()
-            if len(m) > 1 and "type" not in m.lower() and "code" not in m.lower():
-                result.append(m)
-        return list(set(result))
+        return list(set(
+            m.strip() for m in matches
+            if len(m.strip()) > 1 and "type" not in m.lower() and "code" not in m.lower()
+        ))
+
 
     def parse_organizations(self, raw_work):
         return self.safe_json_extract(raw_work, "companyName")
@@ -68,11 +92,14 @@ class ResumeDatasetGenerator:
     def parse_education(self, raw_edu):
         return self.safe_json_extract(raw_edu, "instituteName")
 
+
     def parse_job_titles(self, raw_work):
-        return self.safe_json_extract(raw_work, "jobTitle")
+        return (self.safe_json_extract(raw_work, "jobTitle"))
+
 
     def extract_demands(self, raw_work):
         return self.safe_json_extract(raw_work, "demands")
+
 
     def extract_achievements(self, text):
         text = str(text).lower()
@@ -97,12 +124,12 @@ class ResumeDatasetGenerator:
         ]
         achievements = []
         for pattern in patterns:
-            matches = re.findall(pattern, text)
-            for match in matches:
+            for match in re.findall(pattern, text):
                 if isinstance(match, tuple):
                     match = " ".join(match)
                 achievements.append(match)
         return list(set(achievements))
+
 
     def build_resume_text(self, row):
         parts = []
@@ -136,6 +163,7 @@ class ResumeDatasetGenerator:
 
         return "\n".join(parts)
 
+
     def generate_dataset(self):
         print("Загрузка CSV")
         df = pd.read_csv(self.csv_path, sep="|", engine="python", encoding="utf-8", on_bad_lines="skip")
@@ -144,6 +172,10 @@ class ResumeDatasetGenerator:
 
         for index, row in df.iterrows():
             try:
+                position = row.get("positionName")
+                if not self.is_it_position(position):
+                    continue
+
                 full_text = self.build_resume_text(row)
                 if len(full_text.strip()) < 30:
                     continue
@@ -151,7 +183,6 @@ class ResumeDatasetGenerator:
                 tokens = self.tokenize(full_text)
                 labels = ["O"] * len(tokens)
 
-                position = row.get("positionName")
                 if pd.notna(position):
                     labels = self.add_entity(labels, tokens, self.tokenize(position), self.POS_LABEL)
 
