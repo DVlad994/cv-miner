@@ -61,8 +61,7 @@ class ResumeDataset(Dataset):
                 aligned_labels.append(-100)
             else:
                 label = raw_labels[word_id] if word_id < len(raw_labels) else "O"
-                aligned_labels.append(label2id.get(label, 0))
-
+                aligned_labels.append(label2id.get(str(label), 0))
         encoding["labels"] = torch.tensor(aligned_labels)
         return {k: v.squeeze(0) for k, v in encoding.items()}
 

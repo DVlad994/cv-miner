@@ -38,7 +38,7 @@ SYNTH_POSITIONS = [
 SYNTH_COMPANIES = [
     "Яндекс", "Сбер", "VK", "Ozon", "Wildberries", "Тинькофф", "Avito",
     "Сбер", "АльфаБанк", "2ГИС", "ВТБ", "ЦентроБанк", "МТС", "Т-Банк",
-    "HeadHunter", "EPAM", "Банк", "", "Microsoft", "ООО",
+    "HeadHunter", "EPAM", "Банк", "", "Microsoft", "ООО", "Фриланс"
 ]
 SYNTH_UNIVERSITIES = [
     "МГУ им. Ломоносова", "МФТИ", "ВШЭ", "МГТУ им. Баумана",

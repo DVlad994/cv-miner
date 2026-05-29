@@ -26,15 +26,14 @@ except Exception as e:
     ner_model = None
 
 def merge_wordpiece_tokens(tokens):
-    merged = ""
+    words = []
     for token in tokens:
         if token.startswith("##"):
-            merged += token[2:]
+            if words:
+                words[-1] += token[2:]
         else:
-            if merged:
-                merged += " "
-            merged += token
-    return merged.strip()
+            words.append(token)
+    return " ".join(words)
 
 
 def clean_entity_text(text):
@@ -75,21 +74,20 @@ def extract_entities(text):
     for token, label in zip(tokens, labels):
         if token in ["[CLS]", "[SEP]", "[PAD]"]:
             continue
-        if token.startswith("##"):
-            token = token[2:]
 
         if label.startswith("B-"):
             if current_tokens:
-                merged = merge_wordpiece_tokens(current_tokens)
-                entities.append((current_label, merged))
+                entities.append((current_label, merge_wordpiece_tokens(current_tokens)))
             current_label = label[2:]
             current_tokens = [token]
+
         elif label.startswith("I-") and current_label == label[2:]:
             current_tokens.append(token)
+
         else:
             if current_tokens:
-                merged = merge_wordpiece_tokens(current_tokens)
-                entities.append((current_label, merged))
+                entities.append((current_label, merge_wordpiece_tokens(current_tokens)))
+
             current_tokens = []
             current_label = None
 
@@ -115,8 +113,11 @@ def extract_entities(text):
             if match:
                 result["phone"] = match.group(0)
         elif entity_type == "SKILL":
-            if entity_text not in result["skills"] and len(entity_text) > 1:
-                result["skills"].append(entity_text)
+            cleaned_skill = entity_text.strip()
+            if (cleaned_skill
+                and cleaned_skill not in result["skills"]
+                and len(cleaned_skill) > 1):
+                result["skills"].append(cleaned_skill)
         elif entity_type == "POS" and result["last_position"] is None:
             result["last_position"] = entity_text
         elif entity_type == "ORG":

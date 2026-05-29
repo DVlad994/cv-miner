@@ -3,26 +3,13 @@ from backend.services.analyzer import extract_entities, ner_model, NER_MODEL_PAT
 print(f"Модель загружена: {ner_model is not None}")
 print(f"Путь к модели: {NER_MODEL_PATH}")
 
-# стандартное резюме, которое может быть обработано с помощью правил (regex)
 text = """Артём Власов
 
-tg: @artem_dev
-для связи: artem.vlsv@protonmail.com
+Email: artem.vlsv@protonmail.com
 
-Живу в Казани
+Город: Казань
 
-Чем занимался:
-
-— собирал сервисы для обработки огромного количества логов
-— поднимал контейнерную инфраструктуру
-— автоматизировал выкладку релизов, ускорил на 50%
-— писал внутренние инструменты для аналитиков
-— занимался отказоустойчивостью, повысил на 40%
-— ускорял тяжёлые SQL-запросы
-— настраивал пайплайны доставки
-
-Стек:
-
+Навыки:
 PyTorch
 RabbitMQ
 Grafana
@@ -32,19 +19,22 @@ Go
 Python
 Helm
 ArgoCD
+SQL
+Docker
+Kubernetes
+PostgreSQL
 
-Где работал:
+Опыт работы:
 
 2019 — 2021
-занимался внутренней платформой обработки данных
-Тинькофф
+Python-разработчик, Тинькофф
+Разработка и поддержка внутренней платформы обработки данных
 
 2021 — настоящее время
-руковожу командой backend/platform engineering
-Ozon Tech
+Team Lead, Ozon Tech
+Руководство командой backend/platform engineering
 
 Образование:
-
 КФУ
 Институт вычислительной математики и информационных технологий
 
@@ -52,5 +42,7 @@ Ozon Tech
 """
 
 result = extract_entities(text)
-
-print(result)
+print("\nРезультат:")
+for key, value in result.items():
+    if value:
+        print(f"  {key}: {value}")
