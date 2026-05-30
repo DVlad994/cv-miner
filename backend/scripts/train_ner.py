@@ -56,12 +56,18 @@ class ResumeDataset(Dataset):
 
         word_ids = encoding.word_ids()
         aligned_labels = []
+        previous_word_id = None
         for word_id in word_ids:
             if word_id is None:
                 aligned_labels.append(-100)
-            else:
+            elif word_id != previous_word_id:
+                # первый подтокен слова
                 label = raw_labels[word_id] if word_id < len(raw_labels) else "O"
                 aligned_labels.append(label2id.get(str(label), 0))
+            else:
+                # продолжающие ## подтокены
+                aligned_labels.append(-100)
+            previous_word_id = word_id
         encoding["labels"] = torch.tensor(aligned_labels)
         return {k: v.squeeze(0) for k, v in encoding.items()}
 

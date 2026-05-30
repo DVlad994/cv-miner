@@ -75,6 +75,13 @@ def extract_entities(text):
         if token in ["[CLS]", "[SEP]", "[PAD]"]:
             continue
 
+        # ## подтокены всегда продолжают текущую сущность,
+        # независимо от того, что предсказала модель
+        if token.startswith("##"):
+            if current_tokens:
+                current_tokens.append(token)
+            continue
+
         if label.startswith("B-"):
             if current_tokens:
                 entities.append((current_label, merge_wordpiece_tokens(current_tokens)))
