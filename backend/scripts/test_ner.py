@@ -26,11 +26,11 @@ PostgreSQL
 
 Опыт работы:
 
-2019 — 2021
+2019 - 2021
 Python-разработчик, Тинькофф
 Разработка и поддержка внутренней платформы обработки данных
 
-2021 — настоящее время
+2021 - настоящее время
 Team Lead, Ozon Tech
 Руководство командой backend/platform engineering
 
@@ -38,7 +38,7 @@ Team Lead, Ozon Tech
 КФУ
 Институт вычислительной математики и информационных технологий
 
-Английский — Upper-Intermediate
+Английский - Upper-Intermediate
 """
 
 result = extract_entities(text)

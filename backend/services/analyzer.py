@@ -203,9 +203,12 @@ def match_skills(resume_skills, vacancy_text):
     """
     Сравнивает навыки из резюме с требованиями вакансии
     """
-    vacancy_skills = [line.strip() for line in vacancy_text.split("\n") if line.strip()]
-    if not vacancy_skills:
-        vacancy_skills = [s.strip() for s in vacancy_text.split(",") if s.strip()]
+    # Разбиваем сначала по переносам, затем каждую строку - по запятым.
+    # Это корректно обрабатывает как "Python\nDjango", так и "Python, Django, Git"
+    raw_items = []
+    for line in vacancy_text.split("\n"):
+        raw_items.extend(line.split(","))
+    vacancy_skills = [item.strip() for item in raw_items if item.strip()]
 
     matched = []
     missing = []
@@ -213,7 +216,9 @@ def match_skills(resume_skills, vacancy_text):
         req_lower = req.lower()
         found = False
         for skill in resume_skills:
-            if skill.lower() in req_lower or req_lower in skill.lower():
+            s = skill.lower()
+            # Точное совпадение или вхождение целого слова, чтобы "go" не срабатывал на "django"
+            if s == req_lower or (len(s) > 2 and (s in req_lower or req_lower in s)):
                 matched.append(req)
                 found = True
                 break
