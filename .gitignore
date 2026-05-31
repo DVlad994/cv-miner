@@ -6,3 +6,5 @@ uploads/
 /backend/scripts/rubert_resume_ner/
 /backend/scripts/train.csv
 /backend/scripts/rubert-ner-resume/
+/CODEBASE.md
+/repomix-output.xml

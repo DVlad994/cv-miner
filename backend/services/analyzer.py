@@ -298,8 +298,10 @@ def _best_credit(req, resume_skills):
         if s_canon.lower() == req_canon.lower():
             return 1.0, skill
         credit = 0.0
+        # Иерархия "частный <-> общий" (PostgreSQL <-> SQL, Django <-> Python)
+        credit = max(credit, onto.hierarchy_credit(s_canon, req_canon))
         if onto.are_related(s_canon, req_canon):
-            credit = RELATED_CREDIT
+            credit = max(credit, RELATED_CREDIT)
         # семантическая близость через эмбеддинги (родственные технологии)
         sim = skill_similarity(s_canon, req_canon)
         credit = max(credit, sim * 0.8)

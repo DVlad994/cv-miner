@@ -55,7 +55,7 @@ print("\nИзвлечённые сущности:")
 for key, value in result.items():
     print(f"  {key}: {value}")
 
-vacancy = "Python, FastAPI, PostgreSQL, Docker, Kubernetes\nОпыт от 3 лет"
+vacancy = "Python, Django, PostgreSQL, Docker, Git\nОпыт от 3 лет"
 analysis = analyze_resume_text(text, vacancy)
 
 print("\nПрофиль кандидата:")

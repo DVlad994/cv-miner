@@ -269,6 +269,18 @@
   color: #c62828;
 }
 
+.gap-item.partial {
+  background: #fff8e1;
+  color: #a86700;
+  cursor: help;
+}
+
+.gap-partial-title {
+  color: #a86700;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
 .progress-container {
   margin-top: 16px;
 }

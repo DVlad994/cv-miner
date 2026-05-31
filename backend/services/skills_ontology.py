@@ -72,6 +72,32 @@ SKILL_GROUPS = {
     },
 }
 
+# --- Иерархия "частный -> общий" ---
+# Если кандидат знает частную технологию, требование общей закрывается почти полностью.
+# Обратное (общий -> частный) засчитывается слабее (см. HIERARCHY_DOWN_CREDIT).
+SKILL_PARENTS = {
+    "PostgreSQL": {"SQL"},
+    "MySQL": {"SQL"},
+    "ClickHouse": {"SQL"},
+    "Django": {"Python"},
+    "FastAPI": {"Python"},
+    "Flask": {"Python"},
+    "React": {"JavaScript"},
+    "Angular": {"JavaScript"},
+    "Vue": {"JavaScript"},
+    "PyTorch": {"Python"},
+    "TensorFlow": {"Python"},
+    "scikit-learn": {"Python"},
+    "GitLab CI": {"CI/CD"},
+    "GitHub Actions": {"CI/CD"},
+    "Jenkins": {"CI/CD"},
+    "ArgoCD": {"CI/CD"},
+}
+
+# Веса иерархического зачёта
+HIERARCHY_UP_CREDIT = 0.9    # частный -> общий (знаю PostgreSQL, требуется SQL)
+HIERARCHY_DOWN_CREDIT = 0.55  # общий -> частный (знаю SQL, требуется PostgreSQL)
+
 # Обратный индекс: канонический навык -> множество доменов
 _SKILL_TO_GROUPS = {}
 for _group, _skills in SKILL_GROUPS.items():
@@ -145,6 +171,22 @@ def are_related(skill_a, skill_b):
         return True
     ga, gb = groups_of(a), groups_of(b)
     return bool(ga & gb)
+
+
+def hierarchy_credit(candidate_skill, required_skill):
+    """
+    Иерархический зачёт по связи "частный -> общий".
+    Возвращает credit[0..1] или 0, если прямой иерархической связи нет.
+      - кандидат знает частную технологию, требуется общая -> HIERARCHY_UP_CREDIT
+      - кандидат знает общую, требуется частная           -> HIERARCHY_DOWN_CREDIT
+    """
+    c = canonicalize(candidate_skill)
+    r = canonicalize(required_skill)
+    if r in SKILL_PARENTS.get(c, set()):
+        return HIERARCHY_UP_CREDIT
+    if c in SKILL_PARENTS.get(r, set()):
+        return HIERARCHY_DOWN_CREDIT
+    return 0.0
 
 
 def dominant_domain(skills):
