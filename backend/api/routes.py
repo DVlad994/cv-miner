@@ -47,11 +47,8 @@ def analyze_resume():
         "text_length": len(resume_text),
         "full_text": resume_text,
         "candidate": analysis["candidate"],
-        "matching_result": {
-            "total_score": analysis["matching_result"]["total_score"],
-            "matched": analysis["matching_result"]["matched"],
-            "missing": analysis["matching_result"]["missing"]
-        }
+        "profile": analysis["profile"],
+        "matching_result": analysis["matching_result"]
     })
 
 

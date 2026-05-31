@@ -140,6 +140,22 @@ function App() {
                           <div key={s} className="gap-item matched">{s}</div>
                         ))}
                       </div>
+                      {result.matching_result.partial?.length > 0 && (
+                        <div>
+                          <h4 className="gap-partial-title">
+                            Частично ({result.matching_result.partial.length})
+                          </h4>
+                          {result.matching_result.partial.map(p => (
+                            <div
+                              key={p.requirement}
+                              className="gap-item partial"
+                              title={`Зачтено через «${p.via}» на ${Math.round(p.credit * 100)}%`}
+                            >
+                              {p.requirement} ≈ {p.via} ({Math.round(p.credit * 100)}%)
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div>
                         <h4 className="gap-missing-title">
                           Отсутствует ({result.matching_result.missing.length})
