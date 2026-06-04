@@ -1,16 +1,6 @@
-"""
-Онтология навыков: канонизация синонимов, группировка по доменам,
-фильтрация мусора и базовый граф близости технологий
-Принцип работы всех современных ИИ-анализаторов резюме
-
-  - очистка извлечённых навыков от мусора (части email, телефонов и т.п.)
-  - приведения синонимов к канону (k8s -> Kubernetes)
-  - зачёт родственных технологий (Django ~ FastAPI)
-"""
-
 import re
 
-# Канонические синонимы: alias -> каноническое имя
+# разные написания одного навыка -> канон, чтобы синонимы не считались разными
 SKILL_SYNONYMS = {
     # Языки
     "py": "Python", "python3": "Python", "питон": "Python",
@@ -44,7 +34,9 @@ SKILL_SYNONYMS = {
     "scikit-learn": "scikit-learn",
 }
 
-# Группы навыков для частичного зачета родственных технологий
+#  нужно, чтобы родственные технологии частично зачитывались
+# (требуется Redis, у кандидата Kafka- оба Data, дадим частичный зачёт),
+# аналогично Docker, Prometheus, Grafana применяются вместе, хоть и не имеют общего назначения
 SKILL_GROUPS = {
     "Backend": {
         "Python", "Go", "Java", "C#", "PHP", "Ruby", "Node.js",
@@ -72,9 +64,8 @@ SKILL_GROUPS = {
     },
 }
 
-# --- Иерархия "частный -> общий" ---
-# Если кандидат знает частную технологию, требование общей закрывается почти полностью.
-# Обратное (общий -> частный) засчитывается слабее (см. HIERARCHY_DOWN_CREDIT).
+# Иерархия "частное -> общее": знаешь PostgreSQL значит человек знает SQL
+# В обратную сторону слабее: знание SQL не гарантирует именно PostgreSQL
 SKILL_PARENTS = {
     "PostgreSQL": {"SQL"},
     "MySQL": {"SQL"},
@@ -94,23 +85,24 @@ SKILL_PARENTS = {
     "ArgoCD": {"CI/CD"},
 }
 
-# Веса иерархического зачёта
-HIERARCHY_UP_CREDIT = 0.9    # частный -> общий (знаю PostgreSQL, требуется SQL)
-HIERARCHY_DOWN_CREDIT = 0.55  # общий -> частный (знаю SQL, требуется PostgreSQL)
+HIERARCHY_UP_CREDIT = 0.9    # знаю PostgreSQL, требуется SQL - почти полный зачёт
+HIERARCHY_DOWN_CREDIT = 0.55  # знаю SQL, требуется PostgreSQL - только частичный
 
-# Обратный индекс: канонический навык -> множество доменов
+# навык -> в какие домены он входит, удобно спрашивать "родственны ли два навыка"
 _SKILL_TO_GROUPS = {}
 for _group, _skills in SKILL_GROUPS.items():
     for _s in _skills:
         _SKILL_TO_GROUPS.setdefault(_s, set()).add(_group)
 
-# Множество всех известных канонических навыков (для фильтрации мусора)
+# все навыки, которые мы знаем "в лицо" по этому списку отсекаем мусор
 KNOWN_SKILLS = set(_SKILL_TO_GROUPS.keys()) | set(SKILL_SYNONYMS.values())
 
 
 def canonicalize(skill):
     """
-    Приводит навык к каноническому виду через словарь синонимов
+    Сводим разные написания одного навыка к одному виду: k8s и kuber -> Kubernetes
+    Нужно, чтобы синонимы не считались разными навыками при сравнении
+    Если программисты по разному называют одни и те же технологии, фреймворки
     """
     if not skill:
         return None
@@ -125,8 +117,9 @@ def canonicalize(skill):
 
 def is_probable_skill(text):
     """
-    Фильтр мусора: отсекает части email/телефонов/URL и слишком короткие
-    бессмысленные фрагменты, которые ошибочно размечены как навык
+    Отсекаем мусор, который модель иногда метит как навык: куски email,
+    телефонов, обрывки доменов. Без этого в навыки лезли "artem." и "protonmail. com"
+    todo исправить распознавание Ozon Tech как образование
     """
     if not text:
         return False
@@ -134,37 +127,30 @@ def is_probable_skill(text):
     if len(t) < 2:
         return False
     known_lower = {k.lower() for k in KNOWN_SKILLS}
-    # Известный навык - всегда пропускаем (даже если есть точка: node.js, scikit-learn)
+    # пропускаем с точкой внутри (node.js, scikit-learn)
     if t.lower() in known_lower:
         return True
-    # Части email / адресов / ссылок
+    # явная почта или ссылка
     if "@" in t or "://" in t:
         return False
     if re.search(r"\.(com|ru|org|net|io|dev)\b", t.lower()):
         return False
-    # Огрызок email/домена: латиница в нижнем регистре с точкой
-    # ("artem.", "vlsv", "protonmail. com") и это не известный навык
+    # обрывок почты/домена: латиница в нижнем регистре с точкой ("artem.", "gmail.com")
     if "." in t and re.fullmatch(r"[a-z0-9.\-_+\s]+", t.lower()):
         return False
-    # Телефонные грызки
+    # одни цифры и разделители - это телефон, а не навык
     if re.fullmatch(r"[\d\s\-()+]+", t):
         return False
     return True
 
 
 def groups_of(skill):
-    """
-    Возвращает множество доменов, к которым относится навык
-    """
+    """К каким доменам (Backend, Data или DevOps) относится навык"""
     return _SKILL_TO_GROUPS.get(canonicalize(skill), set())
 
 
 def are_related(skill_a, skill_b):
-    """
-    :param skill_a:
-    :param skill_b:
-    :return: True, если навыки делят хотя бы один домен (родственные технологии)
-    """
+    """Родственны ли навыки - то есть сидят ли хотя бы в одном общем домене"""
     a = canonicalize(skill_a)
     b = canonicalize(skill_b)
     if a == b:
@@ -175,10 +161,10 @@ def are_related(skill_a, skill_b):
 
 def hierarchy_credit(candidate_skill, required_skill):
     """
-    Иерархический зачёт по связи "частный -> общий".
-    Возвращает credit[0..1] или 0, если прямой иерархической связи нет.
-      - кандидат знает частную технологию, требуется общая -> HIERARCHY_UP_CREDIT
-      - кандидат знает общую, требуется частная           -> HIERARCHY_DOWN_CREDIT
+    Зачёт по линии "частное-общее" между навыком кандидата и требованием
+
+    Знает PostgreSQL, нужен SQL значит даём почти полный зачёт
+    и наоборот если знает SQL, а нужен PostgreSQL) значит зачет только частичный. Если связи нет, возвращаем 0
     """
     c = canonicalize(candidate_skill)
     r = canonicalize(required_skill)
@@ -190,9 +176,7 @@ def hierarchy_credit(candidate_skill, required_skill):
 
 
 def dominant_domain(skills):
-    """
-    Определяет основной домен кандидата по списку навыков
-    """
+    """Главный домен кандидата - чей домен чаще встречается в навыках, тот и Backend/DevOps/ML"""
     counts = {}
     for s in skills:
         for g in groups_of(s):

@@ -1,0 +1,44 @@
+.explain-summary {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.explain-factors {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.explain-factor-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.explain-factor-name { color: #333; font-weight: 500; }
+.explain-factor-val { color: #7c3aed; font-variant-numeric: tabular-nums; }
+
+.explain-bar {
+  height: 8px;
+  background: #f0ecf8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.explain-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a78bfa, #7c3aed);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.explain-notes {
+  margin: 16px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.6;
+}

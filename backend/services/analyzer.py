@@ -256,25 +256,27 @@ def skill_similarity(skill_a, skill_b):
     return max(0.0, min(1.0, (sim - 0.5) / 0.45))
 
 
-# Пороги зачёта одного требования
-FULL_CREDIT = 0.9      # полное совпадение
-PARTIAL_CREDIT = 0.4   # частичное (родственная технология)
-RELATED_CREDIT = 0.6   # вес за навык из того же домена
+# Насколько закрыто одно требование вакансии: от этих порогов зависит,
+# попадёт навык в "совпало", "частично" или "отсутствует"
+FULL_CREDIT = 0.9      # считаем требование полностью закрытым
+PARTIAL_CREDIT = 0.4   # ниже этого уже "отсутствует"
+RELATED_CREDIT = 0.6   # навык из того же домена, но не та же технология
 
 
 def parse_vacancy(vacancy_text):
     """
-    Разбирает текст вакансии в профиль требований
-    :param vacancy_text: текст вакансии
-    :return:    skills: список требуемых навыков
-                required_experience: требуемый опыт в годах (если указан)
+    Достаём из текста вакансии список навыков и требуемый опыт
+
+    HR обычно пишет вакансию вперемешку: навыки через запятую плюс строки
+    вроде "Опыт от 3 лет" — опыт вытаскиваем отдельно, а такие мета-строки
+    в навыки не пускаем, иначе "Опыт от 3 лет" улетит в "отсутствует"
     """
     required_experience = None
     m = re.search(r"(?:опыт\D{0,15})(\d+)\s*(?:\+|лет|год)", vacancy_text, re.IGNORECASE)
     if m:
         required_experience = int(m.group(1))
 
-    # Мета-строки (опыт/образование/зарплата/график) — это не навыки
+    # строки про опыт/образование/зарплату это не навыки — отсекаем
     meta_re = re.compile(r"опыт|образован|зарплат|з/п|занятост|график|релокац", re.IGNORECASE)
     raw_items = []
     for line in vacancy_text.split("\n"):
@@ -287,10 +289,12 @@ def parse_vacancy(vacancy_text):
 
 def _best_credit(req, resume_skills):
     """
-    Лучший зачёт требования req по списку навыков кандидата
-    :return: (credit[0..1], matched_skill_or_None)
-    """
+    Ищем, чем из навыков кандидата лучше всего закрыть требование req
 
+    Идём от точного совпадения к более слабым: та же технология (1.0),
+    иерархия частное-общее (PostgreSQL закрывает SQL), один домен, и в крайнем
+    случае близость по эмбеддингам. Возвращаем лучший зачёт и через какой навык
+    """
     req_canon = onto.canonicalize(req)
     best, best_skill = 0.0, None
     for skill in resume_skills:
@@ -298,11 +302,11 @@ def _best_credit(req, resume_skills):
         if s_canon.lower() == req_canon.lower():
             return 1.0, skill
         credit = 0.0
-        # Иерархия "частный <-> общий" (PostgreSQL <-> SQL, Django <-> Python)
+        # PostgreSQL <-> SQL, Django <-> Python и т.п.
         credit = max(credit, onto.hierarchy_credit(s_canon, req_canon))
         if onto.are_related(s_canon, req_canon):
             credit = max(credit, RELATED_CREDIT)
-        # семантическая близость через эмбеддинги (родственные технологии)
+        # последняя попытка — насколько навыки близки семантически
         sim = skill_similarity(s_canon, req_canon)
         credit = max(credit, sim * 0.8)
         if credit > best:
@@ -312,8 +316,10 @@ def _best_credit(req, resume_skills):
 
 def match_skills(resume_skills, vacancy_text):
     """
-    Сопоставляет навыки кандидата с требованиями вакансии с частичным зачётом
-    родственных технологий (Django - FastAPI) и канонизацией синонимов (k8s = Kubernetes)
+    Раскладываем требования вакансии на совпало/частично/отсутствует
+
+    Главная фишка против тупого поиска по словам: Django засчитается через
+    Python, а k8s и Kubernetes считаются одним навыком
     """
     vacancy = parse_vacancy(vacancy_text)
     vacancy_skills = vacancy["skills"]
@@ -343,13 +349,13 @@ def match_skills(resume_skills, vacancy_text):
 
 def build_candidate_profile(entities):
     """
-    Строит компактный профиль кандидата
+    Собираем короткую карточку кандидата для верхушки результата и для рейтинга:
+    уровень, домен, опыт - то, по чему реальный HR-менеджер прикидывает человека за пару секунд
     """
     skills = entities.get("skills", [])
     exp = entities.get("experience_years")
     domain = onto.dominant_domain(skills)
 
-    # Уровень по опыту + признакам лидерства
     pos = (entities.get("last_position") or "").lower()
     leadership = any(k in pos for k in ["lead", "лид", "тимлид", "head", "руковод", "директор", "manager"])
     if exp is None:
@@ -376,7 +382,8 @@ def build_candidate_profile(entities):
     }
 
 
-# Веса факторов итогового скоринга
+# Вес каждого фактора в итоговом балле - навыки решают, но не на 100%,
+# иначе сильный по опыту и достижениям кандидат проседал бы из-за одного навыка
 SCORE_WEIGHTS = {
     "skills": 0.40,
     "experience": 0.25,
@@ -388,34 +395,38 @@ SCORE_WEIGHTS = {
 
 def score_resume(entities, vacancy_text):
     """
-    Многофакторный итоговый балл соответствия 0-100 по факторам
+    Считаем итоговый балл 0-100 как взвешенную сумму факторов
+
+    Не просто "сколько навыков совпало", а ещё опыт, достижения, образование
+    и насколько прошлая должность бьётся с вакансией
     """
     profile = build_candidate_profile(entities)
     vacancy = parse_vacancy(vacancy_text)
     skill_match = match_skills(entities["skills"], vacancy_text)
 
-    # Навыки
+    # навыки уже посчитаны в match_skills, просто переводим в долю
     skills_factor = skill_match["skills_score"] / 100.0
 
-    # Опыт
+    # опыт: если вакансия задала планку - меряем относительно неё,
+    # если нет - считаем 5 лет за "полный балл"
     req_exp = vacancy["required_experience"]
     cand_exp = profile["experience"]
     if cand_exp is None:
-        experience_factor = 0.5
+        experience_factor = 0.5  # опыт не распознали — не наказываем и не премируем
     elif req_exp:
         experience_factor = max(0.0, min(1.0, cand_exp / req_exp))
     else:
-        # наличие опыта -> круто
         experience_factor = max(0.0, min(1.0, cand_exp / 5.0))
 
-    # Достижения (количественные результаты это сильный сигнал)
+    # достижения с цифрами ("ускорил на 50%") - сильный сигнал, что человек про результат,
+    # трех достижений уже хватает на полный балл
     n_ach = len(profile["achievements"])
     achievements_factor = min(1.0, n_ach / 3.0)
 
-    # Образование
     education_factor = 1.0 if profile["education"] == "Higher" else 0.5
 
-    # Релевантность должности домену вакансии
+    # насколько последняя должность близка к вакансии (по эмбеддингам);
+    # если должность не распознали - ставим нейтральные 0.5
     position_factor = 0.5
     if entities.get("last_position"):
         try:
@@ -437,6 +448,9 @@ def score_resume(entities, vacancy_text):
     total = sum(SCORE_WEIGHTS[k] * factors[k] for k in SCORE_WEIGHTS)
     total_score = round(total * 100, 1)
 
+    # сразу прикладываем разбор балла, чтобы HR видел не голую цифру
+    explanation = explain_score(factors, skill_match, profile, req_exp)
+
     return {
         "total_score": total_score,
         "skills_score": skill_match["skills_score"],
@@ -445,12 +459,85 @@ def score_resume(entities, vacancy_text):
         "matched": skill_match["matched"],
         "partial": skill_match["partial"],
         "missing": skill_match["missing"],
+        "explanation": explanation,
     }
+
+
+# как подписывать факторы в интерфейсе
+FACTOR_LABELS = {
+    "skills": "Совпадение навыков",
+    "experience": "Опыт работы",
+    "achievements": "Достижения",
+    "education": "Образование",
+    "position": "Релевантность должности",
+}
+
+
+def explain_score(factors, skill_match, profile, req_exp):
+    """
+    Разбираем итоговый балл на части, чтобы было видно почему именно такая итоговая цифра
+
+    Чтобы не доверять голой цифре + видеть подробный анализ показываем вклад каждого фактора в баллах
+    и пишем словами, что нашли по навыкам, опыту, достижениям и образованию
+    """
+    breakdown = []
+    for key, weight in SCORE_WEIGHTS.items():
+        contribution = round(weight * factors[key] * 100, 1)  # сколько баллов реально дал фактор
+        breakdown.append({
+            "factor": key,
+            "label": FACTOR_LABELS.get(key, key),
+            "value": factors[key],            # 0..1, насколько фактор закрыт
+            "weight": weight,
+            "contribution": contribution,     # вклад в total_score
+            "max_contribution": round(weight * 100, 1),  # потолок этого фактора
+        })
+    # сортируем по вкладу, чтобы наверху было то, что реально тянет балл
+    breakdown.sort(key=lambda x: x["contribution"], reverse=True)
+
+    notes = []
+    n_matched = len(skill_match["matched"])
+    n_partial = len(skill_match["partial"])
+    n_missing = len(skill_match["missing"])
+    notes.append(
+        f"Навыки: {n_matched} полностью, {n_partial} частично, {n_missing} отсутствует"
+    )
+    # показываем живой пример частичного зачёта, чтобы было понятно, как он работает
+    if skill_match["partial"]:
+        ex = skill_match["partial"][0]
+        notes.append(
+            f"Частичный зачёт, например «{ex['requirement']}» — через «{ex['via']}» "
+            f"({int(ex['credit'] * 100)} %)"
+        )
+    exp = profile.get("experience")
+    if exp is not None:
+        if req_exp:
+            notes.append(f"Опыт {exp} лет при требовании от {req_exp} лет")
+        else:
+            notes.append(f"Опыт работы: {exp} лет")
+    n_ach = len(profile.get("achievements", []))
+    if n_ach:
+        notes.append(f"Найдено достижений с измеримым результатом: {n_ach}")
+    else:
+        notes.append("Количественные достижения в резюме не обнаружены")
+    if profile.get("education") == "Higher":
+        notes.append("Указано высшее образование")
+
+    # одной фразой: что вытянуло балл и где главный провал
+    top = breakdown[0]
+    weakest = min(breakdown, key=lambda x: x["value"])
+    summary = (
+        f"Наибольший вклад в балл вносит фактор «{top['label']}» "
+        f"(+{top['contribution']} из {top['max_contribution']} возможных). "
+        f"Слабее всего закрыт фактор «{weakest['label']}»"
+    )
+
+    return {"summary": summary, "breakdown": breakdown, "notes": notes}
 
 
 def analyze_resume_text(resume_text, vacancy_text):
     """
-    Полный анализ: извлечение сущностей, профиль кандидата и многофакторный скоринг
+    Полный прогон одного резюме: сущности -> профиль -> балл
+    Это то, что дергает эндпоинт /api/analyze
     """
     entities = extract_entities(resume_text)
     profile = build_candidate_profile(entities)
@@ -460,3 +547,35 @@ def analyze_resume_text(resume_text, vacancy_text):
         "profile": profile,
         "matching_result": matching,
     }
+
+
+def rank_resumes(resumes, vacancy_text):
+    """
+    Прогоняем пачку резюме по одной вакансии и сортируем по баллу
+
+    Главный сценарий HR: загрузил стопку откликов, получил готовый рейтинг,
+    кого смотреть первым. resumes — это список {"filename", "text"}
+    """
+    results = []
+    for item in resumes:
+        analysis = analyze_resume_text(item["text"], vacancy_text)
+        results.append({
+            "filename": item.get("filename"),
+            "candidate_name": analysis["candidate"].get("name"),
+            "total_score": analysis["matching_result"]["total_score"],
+            "skills_score": analysis["matching_result"]["skills_score"],
+            "level": analysis["profile"].get("level"),
+            "domain": analysis["profile"].get("domain"),
+            "matched": analysis["matching_result"]["matched"],
+            "partial": analysis["matching_result"]["partial"],
+            "missing": analysis["matching_result"]["missing"],
+            "candidate": analysis["candidate"],
+            "profile": analysis["profile"],
+            "matching_result": analysis["matching_result"],
+        })
+
+    # лучший балл наверх и проставляем места 1, 2, 3...
+    results.sort(key=lambda r: r["total_score"], reverse=True)
+    for i, r in enumerate(results, start=1):
+        r["rank"] = i
+    return results

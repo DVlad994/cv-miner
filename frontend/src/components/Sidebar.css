@@ -76,3 +76,121 @@
   color: #999;
   margin-top: auto;
 }
+
+.vacancy-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 16px;
+}
+
+.add-vacancy-btn {
+  margin: 0 24px 12px;
+  padding: 10px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.add-vacancy-btn:hover { background: #6d28d9; }
+
+.vacancy-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.vacancy-item-main { flex: 1; min-width: 0; }
+
+.vacancy-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.vacancy-item:hover .vacancy-actions { opacity: 1; }
+
+.vacancy-actions button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.vacancy-actions button:hover { background: #e9d5ff; }
+
+.sidebar-empty {
+  padding: 16px;
+  font-size: 13px;
+  color: #999;
+}
+
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  width: 440px;
+  max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal h3 { margin: 0 0 16px; font-size: 18px; }
+
+.modal label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.modal input,
+.modal textarea {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.modal-error { color: #c62828; font-size: 13px; margin: 0 0 12px; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  border: none;
+}
+
+.btn-primary { background: #7c3aed; color: #fff; }
+.btn-primary:hover { background: #6d28d9; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-secondary:hover { background: #e5e5e5; }
