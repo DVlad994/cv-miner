@@ -9,9 +9,40 @@ api_bp = Blueprint('api', __name__)
 
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'}
 
+# Celery подключаем мягко: если брокер/пакет недоступны, система продолжает
+# работать в синхронном режиме, а async-эндпоинты возвращают понятную ошибку
+try:
+    from services import tasks as celery_tasks
+    CELERY_AVAILABLE = True
+except Exception:
+    celery_tasks = None
+    CELERY_AVAILABLE = False
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def _save_file(file):
+    filename = f"{uuid.uuid4()}_{file.filename}"
+    filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    return filepath
+
+
+def _resolve_vacancy():
+    vacancy_text = request.form.get('vacancy_text', '').strip()
+    vacancy_id = request.form.get('vacancy_id', type=int)
+    vacancy_title = None
+    if vacancy_id:
+        vac = db.get_vacancy(vacancy_id)
+        if not vac:
+            return None, None, None, (jsonify({"error": "Вакансия не найдена"}), 404)
+        vacancy_text = vac['requirements']
+        vacancy_title = vac['title']
+    if not vacancy_text:
+        return None, None, None, (jsonify({"error": "Текст вакансии обязателен"}), 400)
+    return vacancy_text, vacancy_id, vacancy_title, None
 
 
 def _save_and_extract(file):
@@ -200,6 +231,67 @@ def get_analysis_detail(analysis_id):
     return jsonify(rec)
 
 
+# Асинхронная обработка через Celery: тяжёлый анализ уходит в worker,
+# клиент получает task_id и опрашивает /tasks/<id>
+
+@api_bp.route('/analyze/async', methods=['POST'])
+def analyze_async():
+    if not CELERY_AVAILABLE:
+        return jsonify({"error": "Асинхронный режим недоступен (нет брокера)"}), 503
+    if 'file' not in request.files or request.files['file'].filename == '':
+        return jsonify({"error": "Файл обязателен"}), 400
+    file = request.files['file']
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Неподдерживаемый формат"}), 400
+
+    vac_text, vac_id, vac_title, err = _resolve_vacancy()
+    if err:
+        return err
+
+    filepath = _save_file(file)
+    task = celery_tasks.analyze_resume_task.delay(
+        filepath, file.filename, vac_text, vac_id, vac_title)
+    # 202 Accepted задача принята, но ещё не выполнена
+    return jsonify({"task_id": task.id, "status": "queued"}), 202
+
+
+@api_bp.route('/rank/async', methods=['POST'])
+def rank_async():
+    if not CELERY_AVAILABLE:
+        return jsonify({"error": "Асинхронный режим недоступен (нет брокера)"}), 503
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "Необходимо загрузить хотя бы один файл"}), 400
+
+    vac_text, vac_id, vac_title, err = _resolve_vacancy()
+    if err:
+        return err
+
+    saved = []
+    for f in files:
+        if f.filename and allowed_file(f.filename):
+            saved.append({"filepath": _save_file(f), "original_name": f.filename})
+    if not saved:
+        return jsonify({"error": "Нет подходящих файлов"}), 400
+
+    task = celery_tasks.rank_resumes_task.delay(saved, vac_text, vac_id, vac_title)
+    return jsonify({"task_id": task.id, "status": "queued"}), 202
+
+
+@api_bp.route('/tasks/<task_id>', methods=['GET'])
+def task_status(task_id):
+    """Статус фоновой задачи: PENDING / STARTED / SUCCESS / FAILURE"""
+    if not CELERY_AVAILABLE:
+        return jsonify({"error": "Асинхронный режим недоступен"}), 503
+    res = celery_tasks.celery_app.AsyncResult(task_id)
+    payload = {"task_id": task_id, "status": res.status}
+    if res.successful():
+        payload["result"] = res.result
+    elif res.failed():
+        payload["error"] = str(res.result)
+    return jsonify(payload)
+
+
 @api_bp.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "async": CELERY_AVAILABLE})
